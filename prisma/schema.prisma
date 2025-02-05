@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -20,6 +17,8 @@ model Sales {
   doordash  Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([month, year])
 }
 
 model Fixed {
@@ -38,6 +37,8 @@ model Fixed {
   other        Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([month, year])
 }
 
 model Employee {
@@ -52,13 +53,14 @@ model Employee {
 
 model Paydate {
   id         Int      @id @default(autoincrement())
-  month      Int
-  year       Int
+  date       DateTime @default(now())
   amount     Float
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([date])
 }
 
 model Labor {
@@ -70,6 +72,8 @@ model Labor {
   employees_total Float
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([month, year])
 }
 
 model Purchase {
@@ -81,6 +85,8 @@ model Purchase {
   category  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([month, year])
 }
 
 model VariableExpenses {
@@ -94,6 +100,8 @@ model VariableExpenses {
   marketing        Float
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([month, year])
 }
 
 model Total {
@@ -106,6 +114,11 @@ model Total {
   total_labor     Float
   total_purchases Float
   total           Float
+  profit_loss     Float
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@unique([month, year], name: "month_year")
+  @@index([month, year])
 }
+

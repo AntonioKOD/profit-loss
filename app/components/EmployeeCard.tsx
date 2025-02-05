@@ -1,64 +1,59 @@
-"use client"
-
-import { useState, useTransition } from "react"
-import { addEmployee } from "../actions" // Ensure this is correctly exported as a "use server" function
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { addEmployee } from "../actions"
+import { prisma } from "../../lib/prisma"
 
-export default function EmployeeCard() {
-  const [name, setName] = useState("")
-  const [position, setPosition] = useState("")
-  const [wage, setWage] = useState("")
-  const [message, setMessage] = useState("")
-  const [isPending, startTransition] = useTransition()
+async function getEmployeeCount() {
+  return await prisma.employee.count()
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage("") // Reset message
+async function getEmployees() {
+  return await prisma.employee.findMany({
+    include: {
+      paydates: {
+        orderBy: {
+          date: "desc",
+        },
+        take: 1,
+      },
+    },
+  })
+}
 
-    // Convert form data
-    const formData = new FormData()
-    formData.append("name", name)
-    formData.append("position", position)
-    formData.append("wage", wage)
-
-    startTransition(async () => {
-      try {
-        await addEmployee(formData) // ✅ Correct: Pass a FormData object
-        setMessage("✅ Employee added successfully!")
-        setName("")
-        setPosition("")
-        setWage("")
-      } catch (error) {
-        console.error("Error adding employee:", error)
-        setMessage("❌ Error adding employee. Please try again.")
-      }
-    })
-  }
+export default async function EmployeeCard() {
+  const employeeCount = await getEmployeeCount()
+  const employees = await getEmployees()
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Employee</CardTitle>
+        <CardTitle>Employees</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Input
-            type="text"
-            placeholder="Position"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-            required
-          />
-          <Input type="number" placeholder="Wage" value={wage} onChange={(e) => setWage(e.target.value)} required />
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Adding..." : "Add Employee"}
-          </Button>
-          {message && <p className={`text-sm ${message.includes("Error") ? "text-red-500" : "text-green-500"}`}>{message}</p>}
+        <form action={addEmployee} className="space-y-4">
+          <Input type="text" name="name" placeholder="Name" required />
+          <Input type="text" name="position" placeholder="Position" required />
+          <Input type="number" name="wage" placeholder="Wage" step="0.01" required />
+          <Button type="submit">Add Employee</Button>
         </form>
+        <div className="mt-4">
+          <h3 className="font-semibold">Employee Count: {employeeCount}</h3>
+          <ul className="mt-2 space-y-2">
+            {employees.map((employee) => (
+              <li key={employee.id}>
+                {employee.name} - {employee.position} - ${employee.wage.toFixed(2)}/hr
+                {employee.paydates[0] && (
+                  <span className="ml-2 text-sm text-gray-500">
+                    Last paid: {new Date(employee.paydates[0].date).toLocaleDateString()}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       </CardContent>
     </Card>
   )
 }
+

@@ -1,43 +1,41 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { addTotal } from "../actions"
-import { prisma } from "../../lib/prisma"
-import { MonthSelect, YearSelect } from "./MonthYearSelect"
-
-async function getGrandTotal() {
-  const grandTotal = await prisma.total.aggregate({
-    _sum: {
-      total: true,
-    },
-  })
-  return grandTotal._sum.total || 0
-}
+import { getMonthlyStats } from "../actions"
+import { getCurrentMonthYear, formatMonthYear } from "../../lib/date-utils"
 
 export default async function TotalCard() {
-  const grandTotal = await getGrandTotal()
+  const { month, year } = getCurrentMonthYear()
+  const monthlyStats = await getMonthlyStats(month, year)
 
   return (
-    <Card>
+    <Card className="col-span-full">
       <CardHeader>
-        <CardTitle>Add Total</CardTitle>
+        <CardTitle>Monthly Summary - {formatMonthYear(month, year)}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={addTotal} className="space-y-4">
-            <MonthSelect />
-            <YearSelect />
-          <Input type="number" name="total_sales" placeholder="Total Sales" step="0.01" required />
-          <Input type="number" name="total_fixed" placeholder="Total Fixed" step="0.01" required />
-          <Input type="number" name="total_variable" placeholder="Total Variable" step="0.01" required />
-          <Input type="number" name="total_labor" placeholder="Total Labor" step="0.01" required />
-          <Input type="number" name="total_purchases" placeholder="Total Purchases" step="0.01" required />
-          <Input type="number" name="total" placeholder="Total" step="0.01" required />
-          <Button type="submit">Add Total</Button>
-        </form>
-        <div className="mt-4">
-          <h3 className="font-semibold">Grand Total</h3>
-          <p>${grandTotal.toFixed(2)}</p>
-        </div>
+        {monthlyStats ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-semibold">Revenue</h3>
+              <p>Total Sales: ${monthlyStats.total_sales.toFixed(2)}</p>
+            </div>
+            <div>
+              <h3 className="font-semibold">Expenses</h3>
+              <p>Fixed Expenses: ${monthlyStats.total_fixed.toFixed(2)}</p>
+              <p>Variable Expenses: ${monthlyStats.total_variable.toFixed(2)}</p>
+              <p>Labor: ${monthlyStats.total_labor.toFixed(2)}</p>
+              <p>Purchases: ${monthlyStats.total_purchases.toFixed(2)}</p>
+              <p className="font-semibold">Total Expenses: ${monthlyStats.total.toFixed(2)}</p>
+            </div>
+            <div className="col-span-2">
+              <h3 className="font-semibold">Profit/Loss</h3>
+              <p className={`text-2xl font-bold ${monthlyStats.profit_loss >= 0 ? "text-green-600" : "text-red-600"}`}>
+                ${monthlyStats.profit_loss.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p>No data available for the current month. Please add some entries.</p>
+        )}
       </CardContent>
     </Card>
   )
