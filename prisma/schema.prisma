@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Sales {
+  id        Int      @id @default(autoincrement())
+  month     Int
+  year      Int
+  pos       Float
+  checks    Float
+  catering  Float
+  doordash  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Fixed {
+  id           Int      @id @default(autoincrement())
+  month        Int
+  year         Int
+  rent         Float
+  utilities    Float
+  comp         Float
+  insurance    Float
+  supplies     Float
+  waste        Float
+  internet     Float
+  clover       Float
+  exterminator Float
+  other        Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Employee {
+  id        Int       @id @default(autoincrement())
+  name      String
+  position  String
+  wage      Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  paydates  Paydate[]
+}
+
+model Paydate {
+  id         Int      @id @default(autoincrement())
+  month      Int
+  year       Int
+  amount     Float
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Labor {
+  id              Int      @id @default(autoincrement())
+  month           Int
+  year            Int
+  owner_drawer    Float
+  gusto_online    Float
+  employees_total Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Purchase {
+  id        Int      @id @default(autoincrement())
+  month     Int
+  year      Int
+  amount    Float
+  vendor    String
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VariableExpenses {
+  id               Int      @id @default(autoincrement())
+  month            Int
+  year             Int
+  taxes            Float
+  credit_card_fees Float
+  miscellanous     Float
+  billboard        Float
+  marketing        Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Total {
+  id              Int      @id @default(autoincrement())
+  month           Int
+  year            Int
+  total_sales     Float
+  total_fixed     Float
+  total_variable  Float
+  total_labor     Float
+  total_purchases Float
+  total           Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
