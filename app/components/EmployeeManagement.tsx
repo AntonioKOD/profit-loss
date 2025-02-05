@@ -52,7 +52,10 @@ export default function EmployeeManagement() {
 
   useEffect(() => {
     async function fetchEmployees() {
-      const fetchedEmployees = await getEmployees()
+      const fetchedEmployees = (await getEmployees()).map((employee: any) => ({
+        ...employee,
+        id: Number(employee.id),
+      }))
       setEmployees(fetchedEmployees)
     }
     fetchEmployees()
@@ -68,7 +71,10 @@ export default function EmployeeManagement() {
         description: "The new employee has been added to the system.",
       })
       // Refresh the employee list
-      const updatedEmployees = await getEmployees()
+      const updatedEmployees = (await getEmployees()).map((employee: any) => ({
+        ...employee,
+        id: Number(employee.id),
+      }))
       setEmployees(updatedEmployees)
     } catch (error) {
       toast({
