@@ -1,3 +1,4 @@
+
 import { getInsights } from "../actions";
 import InsightsClient from "../components/InsightsClient";
 

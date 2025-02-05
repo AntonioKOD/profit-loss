@@ -2,6 +2,7 @@
 
 import { PrismaClient } from "@prisma/client"
 import { revalidatePath } from "next/cache"
+import { getCurrentMonthYear, formatMonthYear } from "../lib/date-utils"
 
 const prisma = new PrismaClient()
 
@@ -72,7 +73,7 @@ export async function addPaydate(formData: FormData) {
     data: {
       date,
       amount,
-      employeeId,
+      employeeId: employeeId.toString(),
     },
   })
 
@@ -150,26 +151,26 @@ async function calculateProfitLoss(month: number, year: number) {
   // Get all relevant data for the month
   const sales = await prisma.sales.findMany({
     where: { month, year },
-  })
+  });
 
   const fixed = await prisma.fixed.findMany({
     where: { month, year },
-  })
+  });
 
   const labor = await prisma.labor.findMany({
     where: { month, year },
-  })
+  });
 
   const purchases = await prisma.purchase.findMany({
     where: { month, year },
-  })
+  });
 
   const variableExpenses = await prisma.variableExpenses.findMany({
     where: { month, year },
-  })
+  });
 
   // Calculate totals
-  const total_sales = sales.reduce((sum, sale) => sum + sale.pos + sale.checks + sale.catering + sale.doordash, 0)
+  const total_sales = sales.reduce((sum, sale) => sum + sale.pos + sale.checks + sale.catering + sale.doordash, 0);
 
   const total_fixed = fixed.reduce(
     (sum, fix) =>
@@ -184,12 +185,12 @@ async function calculateProfitLoss(month: number, year: number) {
       fix.clover +
       fix.exterminator +
       (fix.other || 0),
-    0,
-  )
+    0
+  );
 
-  const total_labor = labor.reduce((sum, lab) => sum + lab.owner_drawer + lab.gusto_online + lab.employees_total, 0)
+  const total_labor = labor.reduce((sum, lab) => sum + lab.owner_drawer + lab.gusto_online + lab.employees_total, 0);
 
-  const total_purchases = purchases.reduce((sum, purchase) => sum + purchase.amount, 0)
+  const total_purchases = purchases.reduce((sum, purchase) => sum + purchase.amount, 0);
 
   const total_variable = variableExpenses.reduce(
     (sum, variable) =>
@@ -199,52 +200,57 @@ async function calculateProfitLoss(month: number, year: number) {
       variable.miscellanous +
       variable.billboard +
       variable.marketing,
-    0,
-  )
+    0
+  );
 
-  const total = total_fixed + total_labor + total_purchases + total_variable
-  const profit_loss = total_sales - total
+  const total = total_fixed + total_labor + total_purchases + total_variable;
+  const profit_loss = total_sales - total;
 
-  // Update or create the total record
-  await prisma.total.upsert({
+  // Check if a total record already exists for the month & year
+  const existingTotal = await prisma.total.findFirst({
     where: {
-      month_year: {
-        month,
-        year,
-      },
-    },
-    update: {
-      total_sales,
-      total_fixed,
-      total_variable,
-      total_labor,
-      total_purchases,
-      total,
-      profit_loss,
-    },
-    create: {
       month,
       year,
-      total_sales,
-      total_fixed,
-      total_variable,
-      total_labor,
-      total_purchases,
-      total,
-      profit_loss,
     },
-  })
+  });
+
+  if (existingTotal) {
+    // If it exists, update it
+    await prisma.total.update({
+      where: { id: existingTotal.id }, // ✅ Uses `id` instead of `{ month, year }`
+      data: {
+        total_sales,
+        total_fixed,
+        total_variable,
+        total_labor,
+        total_purchases,
+        total,
+        profit_loss,
+      },
+    });
+  } else {
+    // If it does not exist, create it
+    await prisma.total.create({
+      data: {
+        month,
+        year,
+        total_sales,
+        total_fixed,
+        total_variable,
+        total_labor,
+        total_purchases,
+        total,
+        profit_loss,
+      },
+    });
+  }
 }
-
-
 
 export async function getMonthlyStats(month: number, year: number) {
   return await prisma.total.findFirst({
     where: { month, year },
   })
 }
-
-
 
 export async function addEmployee(formData: FormData) {
   const name = formData.get("name") as string
@@ -261,15 +267,116 @@ export async function addEmployee(formData: FormData) {
 
   revalidatePath("/")
 }
-export async function getInsights() {
-  const monthlyTotals = await prisma.total.findMany({
-    orderBy: {
-      year: "asc",
-    },
-  });
 
-  return monthlyTotals;
+export async function getEmployees() {
+  return await prisma.employee.findMany()
 }
 
+export async function getInsights() {
+  const monthlyTotals = await prisma.total.findMany({
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+  })
+
+  return monthlyTotals
+}
+
+export async function getCashFlowData() {
+  const { month, year } = getCurrentMonthYear()
+  const startDate = new Date(year, month - 4, 1) // 3 months ago
+  const endDate = new Date(year, month + 2, 0) // 2 months in the future
+
+  const totals = await prisma.total.findMany({
+    where: {
+      OR: [
+        { year: startDate.getFullYear(), month: { gte: startDate.getMonth() + 1 } },
+        { year: endDate.getFullYear(), month: { lte: endDate.getMonth() + 1 } },
+      ],
+    },
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+  })
+
+  // Generate forecast for future months
+  const lastTotal = totals[totals.length - 1]
+  const forecastMonths = 2
+  for (let i = 1; i <= forecastMonths; i++) {
+    const forecastMonth = ((lastTotal.month + i - 1) % 12) + 1
+    const forecastYear = lastTotal.year + Math.floor((lastTotal.month + i - 1) / 12)
+    totals.push({
+      ...lastTotal,
+      month: forecastMonth,
+      year: forecastYear,
+      total_sales: lastTotal.total_sales * 1.05, // Assume 5% growth
+      total: lastTotal.total * 1.03, // Assume 3% increase in expenses
+      profit_loss: lastTotal.total_sales * 1.05 - lastTotal.total * 1.03,
+    })
+  }
+
+  return totals.map((total) => ({
+    date: formatMonthYear(total.month, total.year),
+    revenue: total.total_sales,
+    expenses: total.total,
+    cashFlow: total.profit_loss,
+  }))
+}
 
 export { calculateProfitLoss }
+
+export async function getRecentTransactions() {
+  const recentSales = await prisma.sales.findMany({
+    take: 5,
+    orderBy: { createdAt: "desc" },
+  })
+
+  const recentExpenses = await prisma.purchase.findMany({
+    take: 5,
+    orderBy: { createdAt: "desc" },
+  })
+
+  const transactions = [
+    ...recentSales.map((sale) => ({
+      type: "sale" as const,
+      amount: sale.pos + sale.checks + sale.catering + sale.doordash,
+      vendor: "Sales", // Add a default vendor for sales
+      createdAt: sale.createdAt,
+    })),
+    ...recentExpenses.map((expense) => ({
+      type: "expense" as const,
+      amount: expense.amount,
+      vendor: expense.vendor,
+      createdAt: expense.createdAt,
+    })),
+  ]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 5)
+
+  return transactions
+}
+
+export async function getSalesData() {
+  const salesData = await prisma.sales.findMany({
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+    take: 12, // Last 12 months
+  })
+
+  return salesData.map((sale) => ({
+    month: `${sale.year}-${sale.month.toString().padStart(2, "0")}`,
+    pos: sale.pos,
+    checks: sale.checks,
+    catering: sale.catering,
+    doordash: sale.doordash,
+  }))
+}
+
+export async function getProfitLossData() {
+  const profitLossData = await prisma.total.findMany({
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+    take: 12, // Last 12 months
+  })
+
+  return profitLossData.map((data) => ({
+    month: `${data.year}-${data.month.toString().padStart(2, "0")}`,
+    profit: data.profit_loss > 0 ? data.profit_loss : 0,
+    loss: data.profit_loss < 0 ? -data.profit_loss : 0,
+  }))
+}
+
