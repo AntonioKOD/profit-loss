@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export type Employee = {
-  id: number
+  id: string
   name: string
   position: string
   wage: number

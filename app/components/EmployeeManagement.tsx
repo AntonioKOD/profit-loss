@@ -54,7 +54,7 @@ export default function EmployeeManagement() {
     async function fetchEmployees() {
       const fetchedEmployees = (await getEmployees()).map((employee: any) => ({
         ...employee,
-        id: Number(employee.id),
+        id: employee.id,
       }))
       setEmployees(fetchedEmployees)
     }
@@ -73,7 +73,7 @@ export default function EmployeeManagement() {
       // Refresh the employee list
       const updatedEmployees = (await getEmployees()).map((employee: any) => ({
         ...employee,
-        id: Number(employee.id),
+        id: employee.id,
       }))
       setEmployees(updatedEmployees)
     } catch (error) {
