@@ -3,7 +3,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { BarChart, DollarSign, Users, Settings } from "lucide-react"
-
+import DownloadButton from "@/components/DownloadButton"
+import { resetData } from "@/app/actions"
+import { Button } from "./ui/button"
 const routes = [
   {
     label: "Dashboard",
@@ -55,6 +57,8 @@ export default function Sidebar() {
               </div>
             </Link>
           ))}
+          <DownloadButton/>
+          <Button onClick={resetData} className="flex bg-red-600">Reset Data</Button>
         </div>
       </div>
     </div>

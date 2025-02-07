@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { getCurrentMonthYear, formatMonthYear } from "../lib/date-utils"
 
+
 const prisma = new PrismaClient()
 
 export async function addSales(formData: FormData) {
@@ -379,4 +380,22 @@ export async function getProfitLossData() {
     loss: data.profit_loss < 0 ? -data.profit_loss : 0,
   }))
 }
+
+
+
+export async function resetData(){
+  await prisma.sales.deleteMany()
+  await prisma.fixed.deleteMany()
+  await prisma.labor.deleteMany()
+  await prisma.purchase.deleteMany()
+  await prisma.variableExpenses.deleteMany()
+  await prisma.total.deleteMany()
+  await prisma.employee.deleteMany()
+  await prisma.paydate.deleteMany()
+  revalidatePath("/")
+}
+
+
+
+
 

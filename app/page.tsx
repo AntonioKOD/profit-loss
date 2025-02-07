@@ -4,6 +4,7 @@ import { RecentSales } from "@/components/RecentSales"
 import { getMonthlyStats, getRecentTransactions } from "./actions"
 import { formatCurrency } from "@/lib/utils"
 
+
 export default async function DashboardPage() {
   const currentDate = new Date()
   const currentMonth = currentDate.getMonth() + 1
